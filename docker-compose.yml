@@ -1,0 +1,56 @@
+version: '3'
+
+services:
+  # maria:
+  #   image: mariadb:10.3
+  #   # ports:
+  #   #   - ${HOST_POSTGRES_PORT}:${POSTGRES_PORT}
+  #   environment:
+  #     - MYSQL_USER=${DB_USER}
+  #     - MYSQL_PASSWORD=${DB_PASS}
+  #     - MYSQL_DATABASE=${DB_NAME}
+  #     - MYSQL_PORT=${DB_PORT}
+  #     - MYSQL_ROOT_PASSWORD=${DB_PASS}
+  # backup:
+  #   image: ocdbbackup:mariadb-10.3
+  #   env_file:
+  #     - ./.env
+  #   volumes:
+  #     - .:/code
+  #     - ./dumps:/dumps
+  #   command: /code/backup.sh
+
+    # postgres:
+  #   image: postgres:9.6
+  #   # ports:
+  #   #   - ${HOST_POSTGRES_PORT}:${POSTGRES_PORT}
+  #   environment:
+  #     - POSTGRES_USER=${DB_USER}
+  #     - POSTGRES_PASSWORD=${DB_PASS}
+  #     - POSTGRES_DB=${DB_NAME}
+  #     - POSTGRES_PORT=${DB_PORT}
+  # backup:
+  #   image: ocdbbackup:postgres-9.6
+  #   env_file:
+  #     - ./.env
+  #   volumes:
+  #     - .:/code
+  #     - ./dumps:/dumps
+  #   command: /code/backup.sh
+
+  mongo:
+    image: mongo:3.2
+    # ports:
+    #   - ${HOST_POSTGRES_PORT}:${POSTGRES_PORT}
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${DB_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${DB_PASS}
+      - MONGO_INITDB_DATABASE=${DB_NAME}
+  backup:
+    image: cupermind/db-backup:mongo-3.2
+    env_file:
+      - ./.env
+    volumes:
+      - .:/code
+      - ./dumps:/dumps
+    command: /code/backup.sh

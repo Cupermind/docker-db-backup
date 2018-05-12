@@ -1,0 +1,170 @@
+apiVersion: v1
+kind: Template
+metadata:
+  creationTimestamp: null
+  name: db-backup
+  annotations:
+    "openshift.io/display-name": DB backup
+    description: |
+      A CronJob service to backup database has been created in your project.
+    iconClass: fa fa-cogs
+    tags: "backup,database"
+
+parameters:
+- name: JOB_NAME
+  description: Unique identifier for this particular job
+  displayName: Job Name
+  value: db-backup
+  required: true
+- name: DB_ENGINE
+  description: "Please choose from supported tags: https://hub.docker.com/r/cupermind/db-backup/tags/"
+  displayName: DB Engine
+  required: true
+- name: BACKUP_TYPE
+  description: "choose from: maria, postgres, mongo"
+  displayName: Backup Type
+  required: true
+- name: DB_USER
+  description: Database user
+  displayName: Database User
+  required: true
+- name: DB_PASS
+  description: Database password
+  displayName: Database Password
+  required: true
+- name: DB_NAME
+  description: Database name
+  displayName: Database Name
+  required: true
+- name: DB_HOST
+  description: Database host
+  displayName: Database Host
+  required: true
+- name: DB_PORT
+  description: Database port
+  displayName: Database Port
+  required: true
+- name: S3_BUCKET
+  description: S3 Bucket
+  displayName: S3 Bucket
+  required: false
+- name: S3_ACCESS_KEY
+  description: S3 Access Key
+  displayName: S3 Access Key
+  required: false
+- name: S3_SECRET_KEY
+  description: S3 Secret Key
+  displayName: S3 Secret Key
+  required: false
+- name: S3_DUMP_DIR
+  description: S3 dumps directory
+  displayName: S3 Dumps Directory
+  required: false
+- name: S3_REGION
+  description: S3 Region
+  displayName: S3 Region
+  required: false
+- name: SLACK_WEBHOOK
+  description: Slack webhook
+  displayName: Slack WebHook
+  required: false
+- name: SLACK_CHANNEL
+  description: Slack channel
+  displayName: Slack Channel
+  required: false
+- name: SLACK_USERNAME
+  description: Slack Username
+  displayName: Slack Username
+  required: false
+- name: GPG_KEYSERVER
+  description: GPG KeyServer
+  displayName: GPG KeyServer
+  required: false
+- name: GPG_KEYS
+  description: Comma separated GPG keys to encrypt to
+  displayName: GPG Keys
+  required: false
+- name: BACKUP_PREFIX
+  description: Filename prefix for backups
+  displayName: Backup Prefix
+  required: false
+- name: BACKUP_KEEP_DAYS
+  description: How many days to keep backups (remove after this expiration period)
+  displayName: Backup Days
+  required: false
+  value: "14"
+- name: CRON_SCHEDULE
+  description: Standard Cron schedule against which to execute the job
+  displayName: Cron Schedule
+  value: "0 0 * * *"
+  required: true
+
+objects:
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: ${JOB_NAME}-secret
+  type: Opaque
+  stringData:
+    db_pass: ${DB_PASS}
+    s3_secret_key: ${S3_SECRET_KEY}
+
+- apiVersion: batch/v2alpha1
+  kind: CronJob
+  metadata:
+    name: ${JOB_NAME}-cron
+    labels:
+      job: ${JOB_NAME}
+    annotations:
+      alpha.image.policy.openshift.io/resolve-names: '*'
+  spec:
+    schedule: ${CRON_SCHEDULE}
+    jobTemplate:
+      spec:
+        template:
+          spec:
+            containers:
+            - name: ${JOB_NAME}
+              image: cupermind/db-backup:${DB_ENGINE}
+              env:
+              - name: BACKUP_TYPE
+                value: ${BACKUP_TYPE}
+              - name: DB_USER
+                value: ${DB_USER}
+              - name: DB_NAME
+                value: ${DB_NAME}
+              - name: DB_HOST
+                value: ${DB_HOST}
+              - name: DB_PORT
+                value: ${DB_PORT}
+              - name: S3_BUCKET
+                value: ${S3_BUCKET}
+              - name: S3_ACCESS_KEY
+                value: ${S3_ACCESS_KEY}
+              - name: S3_DUMP_DIR
+                value: ${S3_DUMP_DIR}
+              - name: S3_REGION
+                value: ${S3_REGION}
+              - name: SLACK_WEBHOOK
+                value: ${SLACK_WEBHOOK}
+              - name: SLACK_CHANNEL
+                value: ${SLACK_CHANNEL}
+              - name: SLACK_USERNAME
+                value: ${SLACK_USERNAME}
+              - name: GPG_KEYSERVER
+                value: ${GPG_KEYSERVER}
+              - name: GPG_KEYS
+                value: ${GPG_KEYS}
+              - name: BACKUP_PREFIX
+                value: ${BACKUP_PREFIX}
+              - name: DB_PASS
+                valueFrom:
+                  secretKeyRef:
+                    name: ${JOB_NAME}-secret
+                    key: db_pass
+              - name: S3_SECRET_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: ${JOB_NAME}-secret
+                    key: s3_secret_key
+            restartPolicy: Never
