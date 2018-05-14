@@ -1,3 +1,5 @@
 .env
 .docker_env
 dumps
+*.gz
+*.md5sum

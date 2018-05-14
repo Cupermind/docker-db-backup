@@ -88,9 +88,14 @@ parameters:
   description: Filename prefix for backups
   displayName: Backup Prefix
   required: false
-- name: BACKUP_KEEP_DAYS
-  description: How many days to keep backups (remove after this expiration period)
-  displayName: Backup Days
+- name: LOCAL_BACKUP_KEEP_DAYS
+  description: How many days to keep local backups (remove after this expiration period).
+  displayName: Backup Days on local volume
+  required: false
+  value: "14"
+- name: REMOTE_BACKUP_KEEP_DAYS
+  description: How many days to keep remote backups (remove after this expiration period)
+  displayName: Backup Days on remote side
   required: false
   value: "14"
 - name: CRON_SCHEDULE

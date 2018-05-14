@@ -61,22 +61,26 @@ slack_post() {
 
 rotate_backups() {
   # https://serverfault.com/questions/221734/automatically-delete-old-items-from-s3-bucket/361434
-  $S3CMD ls s3://"$S3_BUCKET"/"$S3_DUMP_DIR/" | \
-    while read -r line;  do
-      createDate=`echo $line|awk {'print $1" "$2'}`
-      createDate=`date -d"$createDate" +%s`
-      olderThan=`date -d"-$BACKUP_KEEP_DAYS days" +%s`
-      if [[ $createDate -lt $olderThan ]]
-      then
-        fileName=`echo $line|awk '{$1=$2=$3=""; print $0}' | sed 's/^[ \t]*//'`
-        echo $fileName
-        if [[ $fileName != "" ]]
+  if [[ ! -z "$REMOTE_BACKUP_KEEP_DAYS" ]]; then
+    $S3CMD ls s3://"$S3_BUCKET"/"$S3_DUMP_DIR/" | \
+      while read -r line;  do
+        createDate=`echo $line|awk {'print $1" "$2'}`
+        createDate=`date -d"$createDate" +%s`
+        olderThan=`date -d"-$REMOTE_BACKUP_KEEP_DAYS days" +%s`
+        if [[ $createDate -lt $olderThan ]]
         then
-          $S3CMD del "$fileName"
+          fileName=`echo $line|awk '{$1=$2=$3=""; print $0}' | sed 's/^[ \t]*//'`
+          echo $fileName
+          if [[ $fileName != "" ]]
+          then
+            $S3CMD del "$fileName"
+          fi
         fi
-      fi
-    done;
-  find . -name "${BACKUP_PREFIX}*" -ctime "+$BACKUP_KEEP_DAYS" -exec rm -vf \{\} \;
+      done;
+  fi
+  if [[ ! -z "$LOCAL_BACKUP_KEEP_DAYS" ]]; then
+    find . -name "${BACKUP_PREFIX}*" -ctime "+$LOCAL_BACKUP_KEEP_DAYS" -exec rm -vf \{\} \;
+  fi
 }
 
 
@@ -158,9 +162,7 @@ fi
 if [[ ! -z "$S3_ACCESS_KEY" ]]; then
   s3_upload $DUMPNAME
   s3_upload $DUMPNAME.md5sum
-  if [[ ! -z "$BACKUP_KEEP_DAYS" ]]; then
-    rotate_backups
-  fi
+  rotate_backups
 fi
 
 echo "Backup process completed"
