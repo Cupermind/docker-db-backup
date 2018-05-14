@@ -44,6 +44,7 @@ rotate_backups() {
         fi
       fi
     done;
+  find . -name "${BACKUP_PREFIX}*" -ctime "+$BACKUP_KEEP_DAYS" -exec rm -vf \{\} \;
 }
 
 id
