@@ -92,7 +92,7 @@ else
   GPG_RECIPIENTS=""
   for key in ${GPG_KEYS//,/ }
   do
-    if gpg --list-keys $key ; then
+    if gpg --list-keys $key 2>/dev/null; then
       echo Encryption key $key is already present
     else
       echo Importing $key
