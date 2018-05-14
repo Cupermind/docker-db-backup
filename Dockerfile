@@ -13,7 +13,6 @@ RUN mkdir -p ${DUMP_DIR} && chmod 0777 ${DUMP_DIR}
 
 WORKDIR /code
 
-COPY slack.sh ./
 COPY backup.sh ./
 
 CMD /code/backup.sh

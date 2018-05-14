@@ -1,8 +1,28 @@
 #!/bin/bash
 
+source_it() {
+  while read -r line; do
+    if [[ -n "$line" ]] && [[ $line != \#* ]]; then
+      export "$line"
+    fi
+  done < $1
+}
+
+# This script can work as standalone script. Normally it reads all environment variables
+# from OpenShift, but if .env is present it will override it.
+if [ -f .env ]; then
+  source_it ".env"
+fi
+
+
 DATE=`date +"%Y%m%d%H%M%S"`
 DUMPNAME="${BACKUP_PREFIX}${BACKUP_TYPE}_${DB_NAME}_$DATE.gz"
 S3CMD="s3cmd --access_key=${S3_ACCESS_KEY} --secret_key=${S3_SECRET_KEY} --region=${S3_REGION}"
+
+s3_upload() {
+  # $1 - filename
+  $S3CMD put $1 s3://"$S3_BUCKET"/"$S3_DUMP_DIR/"$1
+}
 
 wait_port() {
   #
@@ -20,11 +40,23 @@ wait_port() {
   return 1
 }
 
-
-
-s3_upload() {
-  # $1 - filename
-  $S3CMD put $1 s3://"$S3_BUCKET"/"$S3_DUMP_DIR/"$1
+slack_post() {
+  if [[ -z ${SLACK_WEBHOOK} ]]; then
+    echo $2
+    exit 0
+  fi
+  if [ "$1" = "OOPS" ]; then
+    ICON=":exclamation:"
+  elif [ "$1" = "OK" ]; then
+    ICON=":white_check_mark:"
+  else
+    ICON=":white_medium_square:"
+  fi
+  #Send message to Slack
+  curl -X POST -H 'Content-type: application/json' --data "{\
+  \"channel\": \"${SLACK_CHANNEL}\",\
+  \"username\": \"${SLACK_USERNAME}\",\
+  \"text\": \"${ICON} $2\"}" ${SLACK_WEBHOOK}
 }
 
 rotate_backups() {
@@ -47,9 +79,6 @@ rotate_backups() {
   find . -name "${BACKUP_PREFIX}*" -ctime "+$BACKUP_KEEP_DAYS" -exec rm -vf \{\} \;
 }
 
-id
-mkdir -p "$DUMP_DIR"
-cd "$DUMP_DIR" || exit 2
 
 if [[ -z "$GPG_KEYS" ]]; then
   GPG="cat"
@@ -59,8 +88,12 @@ else
   GPG_RECIPIENTS=""
   for key in ${GPG_KEYS//,/ }
   do
-    echo Importing $key
-    gpg --keyserver "$GPG_KEYSERVER" --recv-keys "$key"
+    if gpg --list-keys $key ; then
+      echo Encryption key $key is already present
+    else
+      echo Importing $key
+      gpg --keyserver "$GPG_KEYSERVER" --recv-keys "$key"
+    fi
     GPG_RECIPIENTS="$GPG_RECIPIENTS -r $key"
   done
   GPG="gpg -e --trust-model always $GPG_RECIPIENTS"
@@ -72,7 +105,7 @@ if wait_port $DB_HOST $DB_PORT; then
   echo Port available
 else
   >&2 echo "DB PORT $DB_PORT isn't available"
-    /code/slack.sh OOPS "DB PORT $DB_PORT isn't available: $DUMPNAME"
+    slack_post OOPS "DB PORT $DB_PORT isn't available: $DUMPNAME"
   exit 1
 fi
 
@@ -83,7 +116,7 @@ if [[ ${BACKUP_TYPE} == "postgres" ]] ; then
     echo "Dump created"
   else
     echo "DB dump failed"
-    /code/slack.sh OOPS "postgres DB dump failed for: $DUMPNAME"
+    slack_post OOPS "postgres DB dump failed for: $DUMPNAME"
     exit 1
   fi
 fi
@@ -95,7 +128,7 @@ if [[ ${BACKUP_TYPE} == "maria" ]] ; then
     echo "Dump created"
   else
     echo "DB dump failed"
-    /code/slack.sh OOPS "maria DB dump failed for: $DUMPNAME"
+    slack_post OOPS "maria DB dump failed for: $DUMPNAME"
     exit 1
   fi
 fi
@@ -106,7 +139,7 @@ if [[ ${BACKUP_TYPE} == "mongo" ]] ; then
     echo "Dump created"
   else
     echo "DB dump failed"
-    /code/slack.sh OOPS "mongo DB dump failed for: $DUMPNAME"
+    slack_post OOPS "mongo DB dump failed for: $DUMPNAME"
     exit 1
   fi
 fi
@@ -115,9 +148,10 @@ echo "Creating md5sum"
 if /usr/bin/md5sum $DUMPNAME > $DUMPNAME.md5sum
 then
   echo "md5sum file created"
+  DUMPSIZE=`du -sh "$DUMPNAME" | cut -f1`
 else
   echo "md5sum failed"
-  /code/slack.sh OOPS "md5sum failed for: $DUMPNAME"
+  slack_post OOPS "md5sum failed for: $DUMPNAME"
   exit 1
 fi
 
@@ -130,7 +164,6 @@ if [[ ! -z "$S3_ACCESS_KEY" ]]; then
 fi
 
 echo "Backup process completed"
-#tail -f /dev/null
 
-/code/slack.sh OK "Backup process completed, dump file: $DUMPNAME"
+slack_post OK "Backup process completed, dump file: $DUMPNAME size: $DUMPSIZE"
 exit 0
