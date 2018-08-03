@@ -19,10 +19,12 @@ DATE=`date +"%Y%m%d%H%M%S"`
 DUMPNAME="${BACKUP_PREFIX}${BACKUP_TYPE}_${DB_NAME}_$DATE.gz"
 S3CMD="s3cmd --access_key=${S3_ACCESS_KEY} --secret_key=${S3_SECRET_KEY} --region=${S3_REGION}"
 
+
 s3_upload() {
   # $1 - filename
   $S3CMD put $1 s3://"$S3_BUCKET"/"$S3_DUMP_DIR/"$1
 }
+
 
 wait_port() {
   #
@@ -39,6 +41,25 @@ wait_port() {
   done
   return 1
 }
+
+
+receive_gpg_key() {
+  #
+  # $1 - key
+  #
+  WAIT=120
+  for i in $(seq 1 $WAIT); do
+    
+    if gpg --keyserver "$GPG_KEYSERVER" --recv-keys "$key"; then
+      return 0
+    else
+      >&2 echo "Waiting for $GPG_KEYSERVER to became available (receiving $key)"
+      sleep 3
+    fi
+  done
+  return 1
+}
+
 
 slack_post() {
   if [[ -z ${SLACK_WEBHOOK} ]]; then
@@ -58,6 +79,7 @@ slack_post() {
   \"username\": \"${SLACK_USERNAME}\",\
   \"text\": \"${ICON} $2\"}" ${SLACK_WEBHOOK}
 }
+
 
 rotate_backups() {
   # https://serverfault.com/questions/221734/automatically-delete-old-items-from-s3-bucket/361434
@@ -95,8 +117,8 @@ else
     if gpg --list-keys $key 2>/dev/null; then
       echo Encryption key $key is already present
     else
-      echo Importing $key
-      gpg --keyserver "$GPG_KEYSERVER" --recv-keys "$key"
+      echo Receiving $key from "$GPG_KEYSERVER"
+      receive_gpg_key "$key" || exit 0
     fi
     GPG_RECIPIENTS="$GPG_RECIPIENTS -r $key"
   done
@@ -147,6 +169,7 @@ if [[ ${BACKUP_TYPE} == "mongo" ]] ; then
     exit 1
   fi
 fi
+
 
 echo "Creating md5sum"
 if /usr/bin/md5sum $DUMPNAME > $DUMPNAME.md5sum
