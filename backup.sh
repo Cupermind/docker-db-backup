@@ -18,7 +18,7 @@ fi
 DATE=`date +"%Y%m%d%H%M%S"`
 DUMPNAME="${BACKUP_PREFIX}${BACKUP_TYPE}_${DB_NAME}_$DATE.gz"
 S3CMD="s3cmd --access_key=${S3_ACCESS_KEY} --secret_key=${S3_SECRET_KEY} --region=${S3_REGION}"
-
+VERSION="1.1"
 
 s3_upload() {
   # $1 - filename
@@ -77,7 +77,7 @@ slack_post() {
   curl -X POST -H 'Content-type: application/json' --data "{\
   \"channel\": \"${SLACK_CHANNEL}\",\
   \"username\": \"${SLACK_USERNAME}\",\
-  \"text\": \"${ICON} $2\"}" ${SLACK_WEBHOOK}
+  \"text\": \"${ICON} v.${VERSION} $2\"}" ${SLACK_WEBHOOK}
 }
 
 
