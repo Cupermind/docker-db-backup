@@ -18,7 +18,7 @@ fi
 DATE=`date +"%Y%m%d%H%M%S"`
 DUMPNAME="${BACKUP_PREFIX}${BACKUP_TYPE}_${DB_NAME}_$DATE.gz"
 S3CMD="s3cmd --access_key=${S3_ACCESS_KEY} --secret_key=${S3_SECRET_KEY} --region=${S3_REGION}"
-VERSION="1.1"
+VERSION="1.2"
 
 s3_upload() {
   # $1 - filename
@@ -49,7 +49,6 @@ receive_gpg_key() {
   #
   WAIT=120
   for i in $(seq 1 $WAIT); do
-    
     if gpg --keyserver "$GPG_KEYSERVER" --recv-keys "$key"; then
       return 0
     else
@@ -127,12 +126,15 @@ fi
 
 echo Backing up  $DB_NAME from $DB_HOST to $DUMPNAME
 
-if wait_port $DB_HOST $DB_PORT; then
-  echo Port available
-else
-  >&2 echo "DB PORT $DB_PORT isn't available"
+
+if [[ ! -z "$DB_HOST" ]]  && [[  ! -z "$DB_PORT" ]] ; then
+  if wait_port $DB_HOST $DB_PORT; then
+    echo Port available
+  else
+    >&2 echo "DB PORT $DB_PORT isn't available"
     slack_post OOPS "DB PORT $DB_PORT isn't available: $DUMPNAME"
-  exit 1
+    exit 1
+  fi
 fi
 
 if [[ ${BACKUP_TYPE} == "postgres" ]] ; then
@@ -159,7 +161,7 @@ if [[ ${BACKUP_TYPE} == "maria" ]] ; then
   fi
 fi
 
-if [[ ${BACKUP_TYPE} == "mongo" ]] ; then
+if [[ ${BACKUP_TYPE} == "mongo" ]] && [[ -z "$MONGO_URI" ]] ; then
   if mongodump --archive --host "$DB_HOST" -u "$DB_USER" -p "$DB_PASS" --db "$DB_NAME" | gzip | $GPG > "$DUMPNAME" ; test ${PIPESTATUS[0]} -eq 0
   then
     echo "Dump created"
@@ -170,6 +172,16 @@ if [[ ${BACKUP_TYPE} == "mongo" ]] ; then
   fi
 fi
 
+if [[ ${BACKUP_TYPE} == "mongo" ]] && [[ ! -z "$MONGO_URI" ]] ; then
+  if mongodump --archive --uri "$MONGO_URI" | gzip | $GPG > "$DUMPNAME" ; test ${PIPESTATUS[0]} -eq 0
+  then
+    echo "Dump created"
+  else
+    echo "DB dump failed"
+    slack_post OOPS "mongo DB dump failed for: $DUMPNAME"
+    exit 1
+  fi
+fi
 
 echo "Creating md5sum"
 if /usr/bin/md5sum $DUMPNAME > $DUMPNAME.md5sum
