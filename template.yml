@@ -27,23 +27,27 @@ parameters:
 - name: DB_USER
   description: Database user
   displayName: Database User
-  required: true
+  required: false
 - name: DB_PASS
   description: Database password
   displayName: Database Password
-  required: true
+  required: false
 - name: DB_NAME
   description: Database name
   displayName: Database Name
-  required: true
+  required: false
 - name: DB_HOST
   description: Database host
   displayName: Database Host
-  required: true
+  required: false
 - name: DB_PORT
   description: Database port
   displayName: Database Port
-  required: true
+  required: false
+- name: MONGO_URI
+  description: Mongo uri
+  displayName: Mongo URI
+  required: false
 - name: S3_BUCKET
   description: S3 Bucket
   displayName: S3 Bucket
