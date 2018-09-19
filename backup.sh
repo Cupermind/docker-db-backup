@@ -18,7 +18,11 @@ fi
 DATE=`date +"%Y%m%d%H%M%S"`
 DUMPNAME="${BACKUP_PREFIX}${BACKUP_TYPE}_${DB_NAME}_$DATE.gz"
 S3CMD="s3cmd --access_key=${S3_ACCESS_KEY} --secret_key=${S3_SECRET_KEY} --region=${S3_REGION}"
-VERSION="1.2"
+VERSION="1.3"
+
+# check if home directory is writable, and use /tmp if not
+touch 123 2>/dev/null || export HOME=/tmp
+cd $HOME
 
 s3_upload() {
   # $1 - filename
@@ -109,6 +113,7 @@ if [[ -z "$GPG_KEYS" ]]; then
   GPG="cat"
 else
   echo Importing GPG keys from $GPG_KEYSERVER
+  
   DUMPNAME="$DUMPNAME.gpg"
   GPG_RECIPIENTS=""
   for key in ${GPG_KEYS//,/ }

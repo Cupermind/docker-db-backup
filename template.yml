@@ -146,6 +146,8 @@ objects:
                 value: ${DB_HOST}
               - name: DB_PORT
                 value: ${DB_PORT}
+              - name: MONGO_URI
+                value: ${MONGO_URI}
               - name: S3_BUCKET
                 value: ${S3_BUCKET}
               - name: S3_ACCESS_KEY
