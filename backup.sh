@@ -18,7 +18,7 @@ fi
 DATE=`date +"%Y%m%d%H%M%S"`
 DUMPNAME="${BACKUP_PREFIX}${BACKUP_TYPE}_${DB_NAME}_$DATE.gz"
 S3CMD="s3cmd --access_key=${S3_ACCESS_KEY} --secret_key=${S3_SECRET_KEY} --region=${S3_REGION}"
-VERSION="1.4"
+VERSION="1.5"
 
 # check if home directory is writable, and use /tmp if not
 touch 123 2>/dev/null || export HOME=/tmp
@@ -162,7 +162,7 @@ fi
 
 
 if [[ ${BACKUP_TYPE} == "maria" ]] ; then
-  if mysqldump -h "$DB_HOST" -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" --port="$DB_PORT" | gzip | $GPG > "$DUMPNAME" ; test ${PIPESTATUS[0]} -eq 0
+  if mysqldump -h "$DB_HOST" -u"$DB_USER" -p"$DB_PASS" "$DB_NAME" --port="$DB_PORT" --skip-opt  --add-drop-table --add-locks --create-options --disable-keys  --extended-insert  --quick --set-charset | gzip | $GPG > "$DUMPNAME" ; test ${PIPESTATUS[0]} -eq 0
   then
     echo "Dump created"
   else
