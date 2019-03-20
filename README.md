@@ -23,7 +23,7 @@ scenarios.
 # How to use with Openshift
 
 ``` example
-oc create -f https://raw.githubusercontent.com/Cupermind/docker-db-backup/master/template.yml=
+oc create -f https://raw.githubusercontent.com/Cupermind/docker-db-backup/master/template.yml
 ```
 
 # Standalone use
