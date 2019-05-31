@@ -14,6 +14,10 @@ if [ -f .env ]; then
   source_it ".env"
 fi
 
+# Will create .s3cfg if there is s3cfg template in folder /settings/
+if [ -f /settings/s3cfg ]; then
+  j2 /settings/s3cfg -o /root/.s3cfg
+fi
 
 DATE=`date +"%Y%m%d%H%M%S"`
 DUMPNAME="${BACKUP_PREFIX}${BACKUP_TYPE}_${DB_NAME}_$DATE.gz"

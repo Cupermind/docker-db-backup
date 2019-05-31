@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     python-pip \
     curl \
-    netcat && pip install s3cmd
+    netcat && pip install s3cmd j2cli
 
 RUN mkdir -p ${DUMP_DIR} && chmod 0777 ${DUMP_DIR}
 
